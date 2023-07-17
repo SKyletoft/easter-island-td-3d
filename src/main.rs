@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use bevy::{input::mouse::MouseMotion, prelude::*};
 
 #[derive(Component, Debug)]
@@ -38,6 +40,9 @@ struct Health {
 struct Cursor;
 
 #[derive(Component, Debug)]
+struct VCursor;
+
+#[derive(Component, Debug)]
 struct Progress(f32);
 
 #[derive(Component, Debug)]
@@ -68,6 +73,15 @@ fn setup(
 			..default()
 		},
 		Cursor,
+	));
+	commands.spawn((
+		PbrBundle {
+			mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+			material: materials.add(Color::rgb(0.0, 0.0, 1.0).into()),
+			transform: Transform::from_xyz(0.0, 0.0, 0.0).with_scale((0.1, 0.1, 0.1).into()),
+			..default()
+		},
+		VCursor,
 	));
 	commands.spawn(PbrBundle {
 		mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
@@ -143,21 +157,6 @@ const PATH: [Vec3; 3] = [
 	Vec3::new(5.0, 0.0, 0.0),
 ];
 
-fn move_camera(
-	button: Res<Input<MouseButton>>,
-	mut motion: EventReader<MouseMotion>,
-	mut cam_query: Query<&mut Transform, With<Camera3d>>,
-) {
-	let Ok(mut cam) = cam_query.get_single_mut() else {
-		return;
-	};
-	for ev in motion.iter() {
-		if button.pressed(MouseButton::Left) {
-			cam.translation += Vec3::new(ev.delta.y, 0.0, -ev.delta.x) * 0.02;
-		}
-	}
-}
-
 fn move_enemies(
 	mut query: Query<(&mut Transform, &Speed, &mut Progress), With<Enemy>>,
 	d_time: Res<Time>,
@@ -169,6 +168,55 @@ fn move_enemies(
 		let towards = interpolate(prog.0 + 0.02, &PATH);
 		loc.look_at(towards, Vec3::Y);
 	}
+}
+
+fn move_cursor(
+	button: Res<Input<MouseButton>>,
+	win_query: Query<&Window>,
+	mut cam_query: Query<
+		(&Camera, &GlobalTransform, &mut Transform),
+		(With<Camera3d>, Without<Cursor>, Without<VCursor>),
+	>,
+	mut cur_query: Query<
+		&mut Transform,
+		(With<Cursor>, Without<Camera3d>, Without<VCursor>)
+	>,
+	mut v_cur_query: Query<
+		&mut Transform,
+		(With<VCursor>, Without<Camera3d>, Without<Cursor>)
+	>,
+) {
+	let Ok(win) = win_query.get_single() else {
+		return;
+	};
+	let Ok((cam, g_trans, mut trans)) = cam_query.get_single_mut() else {
+		return;
+	};
+	let Ok(mut cur) = cur_query.get_single_mut() else {
+		return;
+	};
+	let Ok(mut v_cur) = v_cur_query.get_single_mut() else {
+		return;
+	};
+	(|| {
+		// Move cursor
+		let mouse = win.cursor_position()?;
+		let ray = cam.viewport_to_world(g_trans, mouse)?;
+		let dist = ray.intersect_plane(Vec3::ZERO, Vec3::Y)?;
+		let new_cur = ray.get_point(dist);
+		cur.translation = new_cur;
+
+		// Move camera
+		if button.just_pressed(MouseButton::Left) {
+			v_cur.translation = cur.translation;
+		}
+		if button.pressed(MouseButton::Left) {
+			let diff = v_cur.translation - cur.translation;
+			trans.translation += diff;
+		}
+
+		Some(())
+	})();
 }
 
 fn interpolate(dt: f32, range: &[Vec3]) -> Vec3 {
@@ -192,6 +240,6 @@ fn main() {
 		.add_plugins(DefaultPlugins)
 		.add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin)
 		.add_systems(Startup, setup)
-		.add_systems(Update, (move_enemies, move_camera))
+		.add_systems(Update, (move_enemies, move_cursor))
 		.run();
 }
