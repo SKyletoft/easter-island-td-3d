@@ -156,6 +156,31 @@ pub fn move_enemies(
 	}
 }
 
+pub fn animate_enemies(
+	time: Res<Time>,
+	mut enemies: Query<&mut Transform, With<Enemy>>,
+) {
+	static WALK_CYCLE: Lazy<Path> = Lazy::new(|| {
+		Path::new(&[
+			Vec3::new(100.0, 100.0, 100.0),
+			Vec3::new(102.0, 98.0, 102.0),
+			Vec3::new(108.0, 92.0, 108.0),
+			Vec3::new(110.0, 90.0, 110.0),
+			Vec3::new(108.0, 92.0, 108.0),
+			Vec3::new(102.0, 98.0, 102.0),
+			Vec3::new(100.0, 100.0, 100.0),
+		])
+	});
+	const TIME_SCALING_FACTOR: f32 = 1.0;
+	const SIZE_SCALING_FACTOR: f32 = 0.005;
+
+	let secs = time.elapsed_seconds();
+	for mut trans in enemies.iter_mut() {
+		let dt = (secs * TIME_SCALING_FACTOR) % 1.0;
+		trans.scale = SIZE_SCALING_FACTOR * WALK_CYCLE.interpolate(dt);
+	}
+}
+
 pub fn slow(
 	asset_server: &Res<AssetServer>,
 	materials: &mut ResMut<Assets<StandardMaterial>>,
@@ -229,31 +254,6 @@ pub fn fast(
 		},
 		Fast,
 	)
-}
-
-pub fn animate_enemies(
-	time: Res<Time>,
-	mut enemies: Query<(&mut Transform, &Speed)>,
-) {
-	static WALK_CYCLE: Lazy<Path> = Lazy::new(|| {
-		Path::new(&[
-			Vec3::new(100.0, 100.0, 100.0),
-			Vec3::new(102.0, 98.0, 102.0),
-			Vec3::new(108.0, 92.0, 108.0),
-			Vec3::new(110.0, 90.0, 110.0),
-			Vec3::new(108.0, 92.0, 108.0),
-			Vec3::new(102.0, 98.0, 102.0),
-			Vec3::new(100.0, 100.0, 100.0),
-		])
-	});
-	const TIME_SCALING_FACTOR: f32 = 1.0;
-	const SIZE_SCALING_FACTOR: f32 = 0.005;
-
-	let secs = time.elapsed_seconds();
-	for (mut trans, &Speed(s)) in enemies.iter_mut() {
-		let dt = (secs * TIME_SCALING_FACTOR) % 1.0;
-		trans.scale = SIZE_SCALING_FACTOR * WALK_CYCLE.interpolate(dt);
-	}
 }
 
 // ------------------------------ TOWERS ---------------------------------
