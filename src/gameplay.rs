@@ -153,8 +153,8 @@ pub fn move_enemies(
 }
 
 pub fn fast(
-	asset_server: Res<AssetServer>,
-	mut materials: ResMut<Assets<StandardMaterial>>,
+	asset_server: &Res<AssetServer>,
+	materials: &mut ResMut<Assets<StandardMaterial>>,
 	path_selection: PathSelection,
 ) -> impl Bundle {
 	let mesh = asset_server.load("exported/fast.gltf#Mesh0/Primitive0");
@@ -178,8 +178,8 @@ pub fn fast(
 }
 
 pub fn slow(
-	asset_server: Res<AssetServer>,
-	mut materials: ResMut<Assets<StandardMaterial>>,
+	asset_server: &Res<AssetServer>,
+	materials: &mut ResMut<Assets<StandardMaterial>>,
 	path_selection: PathSelection,
 ) -> impl Bundle {
 	let mesh = asset_server.load("exported/slow.gltf#Mesh0/Primitive0");
