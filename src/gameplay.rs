@@ -53,7 +53,7 @@ impl Path {
 	}
 
 	pub fn new(points: &[Vec3]) -> Self {
-		Path(points.iter().cloned().collect())
+		Path(points.to_vec())
 	}
 
 	pub fn interpolate(&self, dt: f32) -> Vec3 {
