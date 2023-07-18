@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use once_cell::sync::Lazy;
 
 type Colour = bevy::prelude::Color;
 
@@ -147,38 +148,12 @@ pub fn move_enemies(
 	for (mut loc, speed, mut prog, path_selection) in query.iter_mut() {
 		prog.0 += speed.0 * d_time.delta_seconds();
 		let path = easy::PATHS[path_selection.0];
-		loc.translation = (path.interpolate(prog.0 + AVG_RANGE)
-			+ path.interpolate(prog.0 - AVG_RANGE))
-			/ 2.0;
+		loc.translation =
+			(path.interpolate(prog.0 + AVG_RANGE) + path.interpolate(prog.0 - AVG_RANGE)) / 2.0;
 
 		let towards = path.interpolate(prog.0 + AVG_RANGE);
 		loc.look_at(towards, Vec3::Y);
 	}
-}
-
-pub fn fast(
-	asset_server: &Res<AssetServer>,
-	materials: &mut ResMut<Assets<StandardMaterial>>,
-	path_selection: PathSelection,
-) -> impl Bundle {
-	let mesh = asset_server.load("exported/fast.gltf#Mesh0/Primitive0");
-
-	(
-		PbrBundle {
-			mesh,
-			material: materials.add(Colour::rgb(0.8, 0.7, 0.6).into()),
-			transform: Transform::from_xyz(0.0, 1.5, 0.0).with_scale(Vec3::ONE * 0.5),
-			..default()
-		},
-		EnemyBundle {
-			enemy: Enemy,
-			speed: Speed(0.01),
-			health: Health::new(10),
-			progress: Progress(0.0),
-			path_selection,
-		},
-		Fast,
-	)
 }
 
 pub fn slow(
@@ -203,6 +178,56 @@ pub fn slow(
 			path_selection,
 		},
 		Slow,
+	)
+}
+
+pub fn normal(
+	asset_server: &Res<AssetServer>,
+	materials: &mut ResMut<Assets<StandardMaterial>>,
+	path_selection: PathSelection,
+) -> impl Bundle {
+	let mesh = asset_server.load("exported/normal.gltf#Mesh0/Primitive0");
+
+	(
+		PbrBundle {
+			mesh,
+			material: materials.add(Colour::rgb(0.8, 0.7, 0.6).into()),
+			transform: Transform::from_xyz(0.0, 1.5, 0.0).with_scale(Vec3::ONE * 0.5),
+			..default()
+		},
+		EnemyBundle {
+			enemy: Enemy,
+			speed: Speed(0.02),
+			health: Health::new(10),
+			progress: Progress(0.0),
+			path_selection,
+		},
+		Slow,
+	)
+}
+
+pub fn fast(
+	asset_server: &Res<AssetServer>,
+	materials: &mut ResMut<Assets<StandardMaterial>>,
+	path_selection: PathSelection,
+) -> impl Bundle {
+	let mesh = asset_server.load("exported/fast.gltf#Mesh0/Primitive0");
+
+	(
+		PbrBundle {
+			mesh,
+			material: materials.add(Colour::rgb(0.8, 0.7, 0.6).into()),
+			transform: Transform::from_xyz(0.0, 1.5, 0.0).with_scale(Vec3::ONE * 0.5),
+			..default()
+		},
+		EnemyBundle {
+			enemy: Enemy,
+			speed: Speed(0.04),
+			health: Health::new(1000),
+			progress: Progress(0.0),
+			path_selection,
+		},
+		Fast,
 	)
 }
 
@@ -263,27 +288,43 @@ pub struct TowerBundle {
 }
 
 pub fn land_attack(
+	mut commands: Commands,
 	towers: Query<(&Tower, &Transform, &RangedShooter, &Damage)>,
-	mut enemies: Query<(&mut Health, &Transform), Without<Air>>,
+	mut enemies: Query<(Entity, &mut Health, &Transform), Without<Air>>,
 ) {
 	for (_, tower_pos, tower_range, tower_dmg) in towers.iter() {
-		for (mut hp, enemy_pos) in enemies
+		for (entity, mut hp, _) in enemies
 			.iter_mut()
-			.filter(|(_, pos)| (tower_pos.translation - pos.translation).length() < tower_range.0)
+			.filter(|(_, _, pos)| (tower_pos.translation - pos.translation).length() < tower_range.0)
 		{
 			hp.current -= tower_dmg.0;
+			if hp.current <= 0 {
+				commands.entity(entity).despawn();
+			}
 		}
 	}
 }
 
-pub const fn stone_tower() -> impl Bundle {
+pub fn stone_tower(
+	asset_server: &Res<AssetServer>,
+	materials: &mut ResMut<Assets<StandardMaterial>>,
+	location: Vec3,
+) -> impl Bundle {
+	let mesh = asset_server.load("exported/moai.gltf#Mesh0/Primitive0");
 	(
+		PbrBundle {
+			mesh,
+			material: materials.add(Colour::rgb(0.8, 0.7, 0.6).into()),
+			transform: Transform::from_xyz(location.x, location.y, location.z)
+				.looking_to(Vec3::X, Vec3::Y),
+			..default()
+		},
 		TowerBundle {
 			tower: Tower::Land,
 			attack_speed: AttackSpeed(15.0),
 			damage: Damage(30),
 		},
-		RangedShooter(50.0),
+		RangedShooter(5.0),
 	)
 }
 
@@ -295,11 +336,6 @@ pub struct Cursor;
 #[derive(Component, Debug)]
 pub struct VCursor;
 
-const CAMERA_LIMITS: (Vec3, Vec3) = (
-	Vec3::new(-45.0, 25.0, -30.0),
-	Vec3::new(-10.0, 25.0, 32.0),
-);
-
 pub fn move_cursor_and_camera(
 	button: Res<Input<MouseButton>>,
 	win_query: Query<&Window>,
@@ -310,6 +346,9 @@ pub fn move_cursor_and_camera(
 	mut cur_query: Query<&mut Transform, (With<Cursor>, Without<Camera3d>, Without<VCursor>)>,
 	mut v_cur_query: Query<&mut Transform, (With<VCursor>, Without<Camera3d>, Without<Cursor>)>,
 ) {
+	const CAMERA_LIMITS_MIN: Vec3 = Vec3::new(-45.0, 25.0, -30.0);
+	const CAMERA_LIMITS_MAX: Vec3 = Vec3::new(-10.0, 25.0, 32.0);
+
 	let mut inner = move || {
 		let win = win_query.get_single().ok()?;
 		let (cam, g_trans, mut trans) = cam_query.get_single_mut().ok()?;
@@ -331,8 +370,8 @@ pub fn move_cursor_and_camera(
 		if button.pressed(MouseButton::Left) {
 			let diff = v_cur.translation - cur.translation;
 			trans.translation = (trans.translation + diff)
-				.max(CAMERA_LIMITS.0)
-				.min(CAMERA_LIMITS.1);
+				.max(CAMERA_LIMITS_MIN)
+				.min(CAMERA_LIMITS_MAX);
 		}
 
 		Some(())
@@ -369,7 +408,7 @@ pub fn spawn_enemy(
 	mut timer: ResMut<SpawnTimer>,
 	mut commands: Commands,
 	asset_server: Res<AssetServer>,
-	materials: ResMut<Assets<StandardMaterial>>,
+	mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 	if !level.active || !timer.0.tick(time.delta()).just_finished() {
 		return;
@@ -383,13 +422,13 @@ pub fn spawn_enemy(
 
 	match enemy_type {
 		EnemyType::Slow => {
-			commands.spawn(slow(asset_server, materials, path_selection));
+			commands.spawn(slow(&asset_server, &mut materials, path_selection));
 		}
 		EnemyType::Normal => {
 			// commands.spawn(normal(asset_server, materials, path_selection));
 		}
 		EnemyType::Fast => {
-			commands.spawn(fast(asset_server, materials, path_selection));
+			commands.spawn(fast(&asset_server, &mut materials, path_selection));
 		}
 		EnemyType::Air => {
 			// commands.spawn(air(asset_server, materials, path_selection));

@@ -16,6 +16,12 @@ pub fn setup(
 	gameplay::spawn_axes(&mut commands, &mut meshes, &mut materials);
 	gameplay::spawn_cursors(&mut commands, &mut meshes, &mut materials);
 
+	commands.spawn(gameplay::stone_tower(
+		&asset_server,
+		&mut materials,
+		Vec3::new(0.0, 1.0, 0.0),
+	));
+
 	// Level
 	commands.spawn((PbrBundle {
 		mesh: asset_server.load("exported/easy.gltf#Mesh0/Primitive0"),
@@ -109,7 +115,7 @@ impl Wave {
 
 pub static WAVES: Lazy<[Wave; 5]> = Lazy::new(|| {
 	[
-		Wave::new(&[EnemyType::Slow], 30),
+		Wave::new(&[EnemyType::Fast], 30),
 		Wave::new(&[EnemyType::Normal], 30),
 		Wave::new(&[EnemyType::Air], 30),
 		Wave::new(&[EnemyType::Fast, EnemyType::Slow], 30),

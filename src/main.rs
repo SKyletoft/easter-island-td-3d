@@ -1,7 +1,6 @@
 #![allow(clippy::type_complexity)]
 
 use bevy::{prelude::*, pbr::DirectionalLightShadowMap};
-use easy::Wave;
 use gameplay::Difficulty;
 
 mod easy;
