@@ -147,7 +147,7 @@ pub fn move_enemies(
 
 	for (mut loc, speed, mut prog, path_selection) in query.iter_mut() {
 		prog.0 += speed.0 * d_time.delta_seconds();
-		let path = easy::PATHS[path_selection.0];
+		let path = &easy::PATHS[path_selection.0];
 		loc.translation =
 			(path.interpolate(prog.0 + AVG_RANGE) + path.interpolate(prog.0 - AVG_RANGE)) / 2.0;
 
