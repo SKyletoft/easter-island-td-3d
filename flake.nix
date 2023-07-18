@@ -22,6 +22,8 @@
 						rust-analyzer
 						cargo-expand
 
+						mangohud
+
 						pkg-config
 						udev
 						alsa-lib
