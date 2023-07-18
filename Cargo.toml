@@ -18,3 +18,4 @@ features = [ "dynamic_linking" ]
 
 [dependencies]
 bevy = "0.11.0"
+once_cell = "1.18.0"
