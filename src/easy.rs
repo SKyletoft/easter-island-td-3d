@@ -1,6 +1,11 @@
-use bevy::prelude::*;
+use std::iter;
 
-use crate::gameplay::{Cursor, Enemy, Progress, Slow, Speed, VCursor};
+use bevy::prelude::*;
+use once_cell::sync::Lazy;
+
+use crate::gameplay::{self, EnemyType, Path};
+
+type Colour = Color;
 
 pub fn setup(
 	mut commands: Commands,
@@ -8,103 +13,17 @@ pub fn setup(
 	mut meshes: ResMut<Assets<Mesh>>,
 	mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-	let slow_mesh_handle = asset_server.load("exported/slow.gltf#Mesh0/Primitive0");
-	let moai_mesh_handle = asset_server.load("exported/moai.gltf#Mesh0/Primitive0");
-	let easy_mesh_handle = asset_server.load("exported/easy.gltf#Mesh0/Primitive0");
-	// let slow_material_handle = asset_server.load("exported/slow.gltf#Material/Primitive0");
+	gameplay::spawn_axes(&mut commands, &mut meshes, &mut materials);
+	gameplay::spawn_cursors(&mut commands, &mut meshes, &mut materials);
 
-	commands.spawn(PbrBundle {
-		mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-		material: materials.add(Color::rgb(0.0, 0.0, 0.0).into()),
-		transform: Transform::from_xyz(0.0, 6.0, 0.0).with_scale((0.5, 0.5, 0.5).into()),
-		..default()
-	});
-	commands.spawn(PbrBundle {
-		mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-		material: materials.add(Color::rgb(1.0, 0.0, 0.0).into()),
-		transform: Transform::from_xyz(2.0, 6.0, 0.0).with_scale((0.5, 0.5, 0.5).into()),
-		..default()
-	});
-	commands.spawn(PbrBundle {
-		mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-		material: materials.add(Color::rgb(0.0, 1.0, 0.0).into()),
-		transform: Transform::from_xyz(0.0, 8.0, 0.0).with_scale((0.5, 0.5, 0.5).into()),
-		..default()
-	});
-	commands.spawn(PbrBundle {
-		mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-		material: materials.add(Color::rgb(0.0, 0.0, 1.0).into()),
-		transform: Transform::from_xyz(0.0, 6.0, 2.0).with_scale((0.5, 0.5, 0.5).into()),
-		..default()
-	});
-
-	commands.spawn((
-		PbrBundle {
-			mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-			material: materials.add(Color::rgb(1.0, 0.0, 0.0).into()),
-			transform: Transform::from_xyz(0.0, 0.0, 0.0).with_scale((0.1, 0.1, 0.1).into()),
-			..default()
-		},
-		Cursor,
-	));
-	commands.spawn((
-		PbrBundle {
-			mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-			material: materials.add(Color::rgb(0.0, 0.0, 1.0).into()),
-			transform: Transform::from_xyz(0.0, 0.0, 0.0).with_scale((0.1, 0.1, 0.1).into()),
-			..default()
-		},
-		VCursor,
-	));
-	commands.spawn(PbrBundle {
-		mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-		material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-		transform: Transform::from_xyz(0.0, 0.0, 0.0).with_scale((0.1, 0.1, 0.1).into()),
-		..default()
-	});
-
+	// Level
 	commands.spawn((PbrBundle {
-		mesh: moai_mesh_handle.clone(),
-		material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-		transform: Transform::from_xyz(-1.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
-		..default()
-	},));
-	commands.spawn((PbrBundle {
-		mesh: moai_mesh_handle.clone(),
-		material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-		transform: Transform::from_xyz(1.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
-		..default()
-	},));
-	commands.spawn((PbrBundle {
-		mesh: moai_mesh_handle.clone(),
-		material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-		transform: Transform::from_xyz(0.0, 0.0, 1.0).looking_at(Vec3::ZERO, Vec3::Y),
-		..default()
-	},));
-	commands.spawn((PbrBundle {
-		mesh: moai_mesh_handle,
-		material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-		transform: Transform::from_xyz(0.0, 0.0, -1.0).looking_at(Vec3::ZERO, Vec3::Y),
-		..default()
-	},));
-
-	commands.spawn((PbrBundle {
-		mesh: easy_mesh_handle,
-		material: materials.add(Color::rgb(0.0, 0.8, 0.0).into()),
+		mesh: asset_server.load("exported/easy.gltf#Mesh0/Primitive0"),
+		material: materials.add(Colour::rgb(0.0, 0.8, 0.0).into()),
 		transform: Transform::from_xyz(0.0, 0.0, 0.0),
 		..default()
 	},));
-	commands.spawn((
-		PbrBundle {
-			mesh: slow_mesh_handle,
-			material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-			transform: Transform::from_xyz(0.0, 1.5, 0.0).with_scale(Vec3::ONE * 0.5),
-			..default()
-		},
-		Enemy::Slow(Slow(0)),
-		Speed(0.04),
-		Progress(0.0),
-	));
+
 	// Light
 	commands.spawn(DirectionalLightBundle {
 		directional_light: DirectionalLight {
@@ -115,6 +34,7 @@ pub fn setup(
 		transform: Transform::from_xyz(4.0, 8.0, 14.0).looking_at(Vec3::ZERO, Vec3::Y),
 		..default()
 	});
+
 	// Camera
 	commands.spawn(Camera3dBundle {
 		// transform: Transform::from_xyz(-15.0, 12.5, 1.0)
@@ -123,41 +43,76 @@ pub fn setup(
 	});
 }
 
-pub const BOTTOM_PATH: [Vec3; 10] = [
-	Vec3::new(-6.0, 0.0, -40.0),
-	Vec3::new(-6.0, 0.0, -26.0),
-	Vec3::new(-14.0, 0.0, -26.0),
-	Vec3::new(-14.0, 0.0, 10.0),
-	Vec3::new(-10.0, 0.0, 10.0),
-	Vec3::new(-10.0, 0.0, 18.0),
-	Vec3::new(-2.0, 0.0, 18.0),
-	Vec3::new(-2.0, 0.0, 30.0),
-	Vec3::new(6.0, 0.0, 30.0),
-	Vec3::new(6.0, 0.0, 40.0),
-];
-pub const TOP_PATH: [Vec3; 10] = [
-	Vec3::new(-6.0, 0.0, -40.0),
-	Vec3::new(-6.0, 0.0, -26.0),
-	Vec3::new(2.0, 0.0, -26.0),
-	Vec3::new(2.0, 0.0, -14.0),
-	Vec3::new(10.0, 0.0, -14.0),
-	Vec3::new(10.0, 0.0, -6.0),
-	Vec3::new(14.0, 0.0, -6.0),
-	Vec3::new(14.0, 0.0, 30.0),
-	Vec3::new(6.0, 0.0, 30.0),
-	Vec3::new(6.0, 0.0, 40.0),
-];
-pub const MIDDLE_PATH: [Vec3; 12] = [
-	Vec3::new(-6.0, 0.0, -40.0),
-	Vec3::new(-6.0, 0.0, -26.0),
-	Vec3::new(2.0, 0.0, -26.0),
-	Vec3::new(2.0, 0.0, -14.0),
-	Vec3::new(-2.0, 0.0, -14.0),
-	Vec3::new(-2.0, 0.0, 2.0),
-	Vec3::new(2.0, 0.0, 2.0),
-	Vec3::new(2.0, 0.0, 18.0),
-	Vec3::new(-2.0, 0.0, 18.0),
-	Vec3::new(-2.0, 0.0, 30.0),
-	Vec3::new(6.0, 0.0, 30.0),
-	Vec3::new(6.0, 0.0, 40.0),
-];
+pub static BOTTOM_PATH: Lazy<Path> = Lazy::new(|| {
+	Path::new([
+		(-6, 0, -45),
+		(-6, 0, -26),
+		(-14, 0, -26),
+		(-14, 0, 10),
+		(-10, 0, 10),
+		(-10, 0, 18),
+		(-2, 0, 18),
+		(-2, 0, 30),
+		(6, 0, 30),
+		(6, 0, 45),
+	])
+});
+
+pub static TOP_PATH: Lazy<Path> = Lazy::new(|| {
+	Path::new([
+		(-6, 0, -45),
+		(-6, 0, -26),
+		(2, 0, -26),
+		(2, 0, -14),
+		(10, 0, -14),
+		(10, 0, -6),
+		(14, 0, -6),
+		(14, 0, 30),
+		(6, 0, 30),
+		(6, 0, 45),
+	])
+});
+
+pub static MIDDLE_PATH: Lazy<Path> = Lazy::new(|| {
+	Path::new([
+		(-6, 0, -45),
+		(-6, 0, -26),
+		(2, 0, -26),
+		(2, 0, -14),
+		(-2, 0, -14),
+		(-2, 0, 2),
+		(2, 0, 2),
+		(2, 0, 18),
+		(-2, 0, 18),
+		(-2, 0, 30),
+		(6, 0, 30),
+		(6, 0, 45),
+	])
+});
+
+pub static PATHS: [&Lazy<Path>; 3] = [&TOP_PATH, &MIDDLE_PATH, &BOTTOM_PATH];
+
+#[derive(Debug, Default, Clone)]
+pub struct Wave(pub Vec<(EnemyType, u8)>);
+
+impl Wave {
+	pub fn new(enemy_pattern: &[EnemyType], enemy_count: usize) -> Self {
+		Wave(
+			iter::repeat(enemy_pattern.iter().copied())
+				.flatten()
+				.zip(iter::repeat(0..3).flatten())
+				.take(enemy_count)
+				.collect(),
+		)
+	}
+}
+
+pub static WAVES: Lazy<[Wave; 5]> = Lazy::new(|| {
+	[
+		Wave::new(&[EnemyType::Slow], 30),
+		Wave::new(&[EnemyType::Normal], 30),
+		Wave::new(&[EnemyType::Air], 30),
+		Wave::new(&[EnemyType::Fast, EnemyType::Slow], 30),
+		Wave::new(&[EnemyType::Split], 10),
+	]
+});

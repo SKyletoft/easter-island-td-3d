@@ -1,21 +1,39 @@
 #![allow(clippy::type_complexity)]
 
-use bevy::{
-	input::mouse::MouseWheel,
-	prelude::*,
-};
+use bevy::{prelude::*, pbr::DirectionalLightShadowMap};
+use easy::Wave;
+use gameplay::Difficulty;
 
 mod easy;
-mod normal;
-mod hard;
 mod gameplay;
-
+mod hard;
+mod normal;
 
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
 		.add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin)
-			.add_systems(Startup, easy::setup)
-		.add_systems(Update, (gameplay::move_enemies, gameplay::move_cursor_and_camera))
+		.insert_resource(DirectionalLightShadowMap {size: 10000})
+		.insert_resource(gameplay::SpawnTimer(Timer::from_seconds(
+			2.0,
+			TimerMode::Repeating,
+		)))
+		.insert_resource(gameplay::Level {
+			number: 0,
+			active: true,
+			difficulty: Difficulty::Easy,
+			wave: easy::WAVES[0].clone(),
+		})
+		.add_systems(Startup, easy::setup)
+		.add_systems(
+			Update,
+			(
+				gameplay::move_enemies,
+				gameplay::move_cursor_and_camera,
+				gameplay::land_attack,
+				// gameplay::air_attack,
+				gameplay::spawn_enemy,
+			),
+		)
 		.run();
 }
