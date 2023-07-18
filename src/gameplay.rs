@@ -10,7 +10,7 @@ use crate::easy::{self, Wave};
 pub struct Path(Vec<Vec3>);
 
 impl Path {
-	pub fn new<const N: usize>(points: [(i32, i32, i32); N]) -> Self {
+	pub fn from_keyframes<const N: usize>(points: [(i32, i32, i32); N]) -> Self {
 		let interpolated = points
 			.iter()
 			.zip(points.iter().skip(1))
@@ -49,6 +49,10 @@ impl Path {
 			.collect();
 
 		Path(interpolated)
+	}
+
+	pub fn new(points: &[Vec3]) -> Self {
+		Path(points.iter().cloned().collect())
 	}
 
 	pub fn interpolate(&self, dt: f32) -> Vec3 {
@@ -200,6 +204,31 @@ pub fn slow(
 		},
 		Slow,
 	)
+}
+
+pub fn animate_enemies(
+	time: Res<Time>,
+	mut enemies: Query<(&mut Transform, &Speed)>,
+) {
+	static WALK_CYCLE: Lazy<Path> = Lazy::new(|| {
+		Path::new(&[
+			Vec3::new(100.0, 100.0, 100.0),
+			Vec3::new(102.0, 98.0, 102.0),
+			Vec3::new(108.0, 92.0, 108.0),
+			Vec3::new(110.0, 90.0, 110.0),
+			Vec3::new(108.0, 92.0, 108.0),
+			Vec3::new(102.0, 98.0, 102.0),
+			Vec3::new(100.0, 100.0, 100.0),
+		])
+	});
+	const TIME_SCALING_FACTOR: f32 = 1.0;
+	const SIZE_SCALING_FACTOR: f32 = 0.005;
+
+	let secs = time.elapsed_seconds();
+	for (mut trans, &Speed(s)) in enemies.iter_mut() {
+		let dt = (secs * TIME_SCALING_FACTOR) % 1.0;
+		trans.scale = SIZE_SCALING_FACTOR * WALK_CYCLE.interpolate(dt);
+	}
 }
 
 // ------------------------------ TOWERS ---------------------------------

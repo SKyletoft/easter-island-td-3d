@@ -44,7 +44,7 @@ pub fn setup(
 }
 
 pub static BOTTOM_PATH: Lazy<Path> = Lazy::new(|| {
-	Path::new([
+	Path::from_keyframes([
 		(-6, 0, -45),
 		(-6, 0, -26),
 		(-14, 0, -26),
@@ -59,7 +59,7 @@ pub static BOTTOM_PATH: Lazy<Path> = Lazy::new(|| {
 });
 
 pub static TOP_PATH: Lazy<Path> = Lazy::new(|| {
-	Path::new([
+	Path::from_keyframes([
 		(-6, 0, -45),
 		(-6, 0, -26),
 		(2, 0, -26),
@@ -74,7 +74,7 @@ pub static TOP_PATH: Lazy<Path> = Lazy::new(|| {
 });
 
 pub static MIDDLE_PATH: Lazy<Path> = Lazy::new(|| {
-	Path::new([
+	Path::from_keyframes([
 		(-6, 0, -45),
 		(-6, 0, -26),
 		(2, 0, -26),

@@ -29,6 +29,7 @@ fn main() {
 			Update,
 			(
 				gameplay::move_enemies,
+				gameplay::animate_enemies,
 				gameplay::move_cursor_and_camera,
 				gameplay::land_attack,
 				// gameplay::air_attack,
