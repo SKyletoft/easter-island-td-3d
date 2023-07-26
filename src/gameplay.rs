@@ -1,9 +1,41 @@
-use bevy::prelude::*;
-use once_cell::sync::Lazy;
+use std::sync::Mutex;
+
+use bevy::{pbr::ScreenSpaceAmbientOcclusionBundle, prelude::*};
+use once_cell::sync::{Lazy, OnceCell};
 
 type Colour = bevy::prelude::Color;
 
 use crate::easy::{self, Wave};
+
+fn round_to_grid(v: Vec3) -> Vec3 {
+	let f = |x: f32| (x / 2.0).round() * 2.0;
+	Vec3::new(f(v.x), v.y, f(v.z))
+}
+
+#[derive(Event)]
+pub struct Click;
+
+pub fn generate_clicks(
+	button: Res<Input<MouseButton>>,
+	windows: Query<&Window>,
+	mut ev: EventWriter<Click>,
+) {
+	static CURSOR_POS: Mutex<Vec2> = Mutex::new(Vec2::ZERO);
+
+	let p = windows
+		.get_single()
+		.ok()
+		.and_then(Window::cursor_position)
+		.unwrap_or(Vec2::ZERO);
+	let mut cur_ref = CURSOR_POS.lock().unwrap();
+
+	if button.just_pressed(MouseButton::Left) {
+		*cur_ref = p;
+	}
+	if button.just_released(MouseButton::Left) && p != Vec2::ZERO && *cur_ref == p {
+		ev.send(Click);
+	}
+}
 
 // ------------------------------- PATH ----------------------------------
 
@@ -156,10 +188,7 @@ pub fn move_enemies(
 	}
 }
 
-pub fn animate_enemies(
-	time: Res<Time>,
-	mut enemies: Query<&mut Transform, With<Enemy>>,
-) {
+pub fn animate_enemies(time: Res<Time>, mut enemies: Query<&mut Transform, With<Enemy>>) {
 	static WALK_CYCLE: Lazy<Path> = Lazy::new(|| {
 		Path::new(&[
 			Vec3::new(100.0, 100.0, 100.0),
@@ -181,17 +210,20 @@ pub fn animate_enemies(
 	}
 }
 
-pub fn slow(
-	asset_server: &Res<AssetServer>,
-	materials: &mut ResMut<Assets<StandardMaterial>>,
-	path_selection: PathSelection,
-) -> impl Bundle {
-	let mesh = asset_server.load("exported/slow.gltf#Mesh0/Primitive0");
+// Static handles to prevent reloading the same asset over and over again.
+// Might already be handled by Bevy though
+static SLOW_SCENE: OnceCell<Handle<Scene>> = OnceCell::new();
+static NORMAL_SCENE: OnceCell<Handle<Scene>> = OnceCell::new();
+static FAST_SCENE: OnceCell<Handle<Scene>> = OnceCell::new();
+static AIR_SCENE: OnceCell<Handle<Scene>> = OnceCell::new();
+static SPLIT_SCENE: OnceCell<Handle<Scene>> = OnceCell::new();
 
+pub fn slow(asset_server: &Res<AssetServer>, path_selection: PathSelection) -> impl Bundle {
 	(
-		PbrBundle {
-			mesh,
-			material: materials.add(Colour::rgb(0.8, 0.7, 0.6).into()),
+		SceneBundle {
+			scene: SLOW_SCENE
+				.get_or_init(|| asset_server.load("exported/Slow.gltf#Scene0"))
+				.clone(),
 			transform: Transform::from_xyz(0.0, 1.5, 0.0).with_scale(Vec3::ONE * 0.5),
 			..default()
 		},
@@ -206,17 +238,12 @@ pub fn slow(
 	)
 }
 
-pub fn normal(
-	asset_server: &Res<AssetServer>,
-	materials: &mut ResMut<Assets<StandardMaterial>>,
-	path_selection: PathSelection,
-) -> impl Bundle {
-	let mesh = asset_server.load("exported/normal.gltf#Mesh0/Primitive0");
-
+pub fn normal(asset_server: &Res<AssetServer>, path_selection: PathSelection) -> impl Bundle {
 	(
-		PbrBundle {
-			mesh,
-			material: materials.add(Colour::rgb(0.8, 0.7, 0.6).into()),
+		SceneBundle {
+			scene: NORMAL_SCENE
+				.get_or_init(|| asset_server.load("exported/Normal.gltf#Scene0"))
+				.clone(),
 			transform: Transform::from_xyz(0.0, 1.5, 0.0).with_scale(Vec3::ONE * 0.5),
 			..default()
 		},
@@ -231,17 +258,52 @@ pub fn normal(
 	)
 }
 
-pub fn fast(
-	asset_server: &Res<AssetServer>,
-	materials: &mut ResMut<Assets<StandardMaterial>>,
-	path_selection: PathSelection,
-) -> impl Bundle {
-	let mesh = asset_server.load("exported/fast.gltf#Mesh0/Primitive0");
-
+pub fn fast(asset_server: &Res<AssetServer>, path_selection: PathSelection) -> impl Bundle {
 	(
-		PbrBundle {
-			mesh,
-			material: materials.add(Colour::rgb(0.8, 0.7, 0.6).into()),
+		SceneBundle {
+			scene: FAST_SCENE
+				.get_or_init(|| asset_server.load("exported/Fast.gltf#Scene0"))
+				.clone(),
+			transform: Transform::from_xyz(0.0, 1.5, 0.0).with_scale(Vec3::ONE * 0.5),
+			..default()
+		},
+		EnemyBundle {
+			enemy: Enemy,
+			speed: Speed(0.04),
+			health: Health::new(1000),
+			progress: Progress(0.0),
+			path_selection,
+		},
+		Fast,
+	)
+}
+
+pub fn air(asset_server: &Res<AssetServer>, path_selection: PathSelection) -> impl Bundle {
+	(
+		SceneBundle {
+			scene: AIR_SCENE
+				.get_or_init(|| asset_server.load("exported/Air.gltf#Scene0"))
+				.clone(),
+			transform: Transform::from_xyz(0.0, 1.5, 0.0).with_scale(Vec3::ONE * 0.5),
+			..default()
+		},
+		EnemyBundle {
+			enemy: Enemy,
+			speed: Speed(0.04),
+			health: Health::new(1000),
+			progress: Progress(0.0),
+			path_selection,
+		},
+		Fast,
+	)
+}
+
+pub fn split(asset_server: &Res<AssetServer>, path_selection: PathSelection) -> impl Bundle {
+	(
+		SceneBundle {
+			scene: SPLIT_SCENE
+				.get_or_init(|| asset_server.load("exported/Split.gltf#Scene0"))
+				.clone(),
 			transform: Transform::from_xyz(0.0, 1.5, 0.0).with_scale(Vec3::ONE * 0.5),
 			..default()
 		},
@@ -293,10 +355,9 @@ pub fn land_attack(
 	mut enemies: Query<(Entity, &mut Health, &Transform), Without<Air>>,
 ) {
 	for (_, tower_pos, tower_range, tower_dmg) in towers.iter() {
-		for (entity, mut hp, _) in enemies
-			.iter_mut()
-			.filter(|(_, _, pos)| (tower_pos.translation - pos.translation).length() < tower_range.0)
-		{
+		for (entity, mut hp, _) in enemies.iter_mut().filter(|(_, _, pos)| {
+			(tower_pos.translation - pos.translation).length() < tower_range.0
+		}) {
 			hp.current -= tower_dmg.0;
 			if hp.current <= 0 {
 				commands.entity(entity).despawn();
@@ -305,20 +366,15 @@ pub fn land_attack(
 	}
 }
 
-pub fn stone_tower(
-	asset_server: &Res<AssetServer>,
-	materials: &mut ResMut<Assets<StandardMaterial>>,
-	location: Vec3,
-) -> impl Bundle {
-	let mesh = asset_server.load("exported/moai.gltf#Mesh0/Primitive0");
+pub fn stone_tower(asset_server: &Res<AssetServer>, location: Vec3) -> impl Bundle {
 	(
-		PbrBundle {
-			mesh,
-			material: materials.add(Colour::rgb(0.8, 0.7, 0.6).into()),
+		SceneBundle {
+			scene: asset_server.load("exported/Moai.gltf#Scene0"),
 			transform: Transform::from_xyz(location.x, location.y, location.z)
 				.looking_to(Vec3::X, Vec3::Y),
 			..default()
 		},
+		ScreenSpaceAmbientOcclusionBundle { ..default() },
 		TowerBundle {
 			tower: Tower::Land,
 			attack_speed: AttackSpeed(15.0),
@@ -328,47 +384,110 @@ pub fn stone_tower(
 	)
 }
 
+#[derive(Resource)]
+pub struct Selection {
+	pub tower: Option<Tower>,
+}
+
+pub fn spawn_tower(
+	mut clicks: EventReader<Click>,
+	asset_server: Res<AssetServer>,
+	cur_query: Query<&Transform, (With<SquareHighlight>, Without<Cursor>, Without<Camera3d>)>,
+	mut tower_selection: ResMut<Selection>,
+	mut commands: Commands,
+) {
+	for _ in clicks.iter() {
+		let Ok(cur_trans) = cur_query.get_single() else {
+			return;
+		};
+		let pos = round_to_grid(cur_trans.translation);
+
+		println!("Spawning tower");
+
+		let selection: &Selection = &tower_selection;
+		match selection.tower {
+			Some(Tower::Land) => {
+				commands.spawn(stone_tower(&asset_server, pos));
+			}
+			Some(Tower::All) => todo!(),
+			Some(Tower::Fire) => todo!(),
+			Some(Tower::Water) => todo!(),
+			Some(Tower::Air) => todo!(),
+			Some(Tower::Laser) => todo!(),
+			None => {
+				return;
+			}
+		}
+		tower_selection.tower = None;
+	}
+}
+
 // ------------------------------ CURSOR ---------------------------------
 
 #[derive(Component, Debug)]
 pub struct Cursor;
 
 #[derive(Component, Debug)]
-pub struct VCursor;
+pub struct SquareHighlight;
 
 pub fn move_cursor_and_camera(
 	button: Res<Input<MouseButton>>,
 	win_query: Query<&Window>,
 	mut cam_query: Query<
 		(&Camera, &GlobalTransform, &mut Transform),
-		(With<Camera3d>, Without<Cursor>, Without<VCursor>),
+		(With<Camera3d>, Without<Cursor>, Without<VisualMarker>),
 	>,
-	mut cur_query: Query<&mut Transform, (With<Cursor>, Without<Camera3d>, Without<VCursor>)>,
-	mut v_cur_query: Query<&mut Transform, (With<VCursor>, Without<Camera3d>, Without<Cursor>)>,
+	mut cur_query: Query<
+		&mut Transform,
+		(
+			With<Cursor>,
+			Without<Camera3d>,
+			Without<SquareHighlight>,
+			Without<VisualMarker>,
+		),
+	>,
+	mut hl_query: Query<
+		&mut Transform,
+		(
+			With<SquareHighlight>,
+			Without<Camera3d>,
+			Without<Cursor>,
+			Without<VisualMarker>,
+		),
+	>,
 ) {
 	const CAMERA_LIMITS_MIN: Vec3 = Vec3::new(-45.0, 25.0, -30.0);
 	const CAMERA_LIMITS_MAX: Vec3 = Vec3::new(-10.0, 25.0, 32.0);
+
+	static CURSOR_REFERENCE: Mutex<Vec3> = Mutex::new(Vec3::ZERO);
 
 	let mut inner = move || {
 		let win = win_query.get_single().ok()?;
 		let (cam, g_trans, mut trans) = cam_query.get_single_mut().ok()?;
 		let mut cur = cur_query.get_single_mut().ok()?;
-		let mut v_cur = v_cur_query.get_single_mut().ok()?;
+		let mut hl = hl_query.get_single_mut().ok()?;
 
 		// Move cursor
 		let mouse = win.cursor_position()?;
 		let ray = cam.viewport_to_world(g_trans, mouse)?;
-		let dist = ray.intersect_plane(Vec3::ZERO, Vec3::Y)?;
-		let new_cur = ray.get_point(dist);
-		cur.translation = new_cur;
+		let dist = ray.intersect_plane(Vec3::new(0.0, 1.0, 0.0), Vec3::Y)?;
+		let Vec3 { x, y: _, z } = ray.get_point(dist);
+
+		let d_x = (((x + 32.0) / 2.0).round() as usize).min(32).max(0);
+		let d_z = (((z + 40.0) / 2.0).round() as usize).min(40).max(0);
+		let d_y = 1.0 - easy::HEIGHT_MAP[d_x][d_z] as f32 / 10.0;
+		let v = Vec3::new(x, d_y, z);
+
+		cur.translation = v;
+		hl.translation = round_to_grid(v);
 
 		// Move camera
+		let mut v_cur = CURSOR_REFERENCE.lock().unwrap();
 		if button.just_pressed(MouseButton::Left) {
-			v_cur.translation = cur.translation;
-			dbg!(&v_cur.translation);
+			*v_cur = cur.translation;
 		}
 		if button.pressed(MouseButton::Left) {
-			let diff = v_cur.translation - cur.translation;
+			let diff = *v_cur - cur.translation;
 			trans.translation = (trans.translation + diff)
 				.max(CAMERA_LIMITS_MIN)
 				.min(CAMERA_LIMITS_MAX);
@@ -408,7 +527,6 @@ pub fn spawn_enemy(
 	mut timer: ResMut<SpawnTimer>,
 	mut commands: Commands,
 	asset_server: Res<AssetServer>,
-	mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 	if !level.active || !timer.0.tick(time.delta()).just_finished() {
 		return;
@@ -422,19 +540,19 @@ pub fn spawn_enemy(
 
 	match enemy_type {
 		EnemyType::Slow => {
-			commands.spawn(slow(&asset_server, &mut materials, path_selection));
+			commands.spawn(slow(&asset_server, path_selection));
 		}
 		EnemyType::Normal => {
-			// commands.spawn(normal(asset_server, materials, path_selection));
+			commands.spawn(normal(&asset_server, path_selection));
 		}
 		EnemyType::Fast => {
-			commands.spawn(fast(&asset_server, &mut materials, path_selection));
+			commands.spawn(fast(&asset_server, path_selection));
 		}
 		EnemyType::Air => {
-			// commands.spawn(air(asset_server, materials, path_selection));
+			commands.spawn(air(&asset_server, path_selection));
 		}
 		EnemyType::Split => {
-			// commands.spawn(split(asset_server, materials, path_selection));
+			commands.spawn(split(&asset_server, path_selection));
 		}
 	}
 }
@@ -445,24 +563,24 @@ pub fn spawn_cursors(
 	commands: &mut Commands,
 	meshes: &mut ResMut<Assets<Mesh>>,
 	materials: &mut ResMut<Assets<StandardMaterial>>,
+	asset_server: &Res<AssetServer>,
 ) {
 	commands.spawn((
 		PbrBundle {
 			mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
 			material: materials.add(Colour::rgb(1.0, 0.0, 0.0).into()),
-			transform: Transform::from_xyz(0.0, 0.0, 0.0).with_scale((0.1, 0.1, 0.1).into()),
+			transform: Transform::from_xyz(0.0, 0.0, 0.0).with_scale((0.1, 4.0, 0.1).into()),
 			..default()
 		},
 		Cursor,
 	));
 	commands.spawn((
-		PbrBundle {
-			mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-			material: materials.add(Colour::rgb(0.0, 0.0, 1.0).into()),
-			transform: Transform::from_xyz(0.0, 0.0, 0.0).with_scale((0.1, 0.1, 0.1).into()),
+		SceneBundle {
+			scene: asset_server.load("exported/Square.gltf#Scene0"),
+			transform: Transform::from_xyz(0.0, 0.0, 0.0),
 			..default()
 		},
-		VCursor,
+		SquareHighlight,
 	));
 }
 
@@ -496,3 +614,58 @@ pub fn spawn_axes(
 		..default()
 	});
 }
+
+#[derive(Component)]
+pub struct VisualMarker;
+
+pub fn visualise_height_map(
+	height_map: &[[u8; 41]; 33],
+	commands: &mut Commands,
+	meshes: &mut ResMut<Assets<Mesh>>,
+	materials: &mut ResMut<Assets<StandardMaterial>>,
+) {
+	let material = materials.add(Colour::rgb(1.0, 1.0, 1.0).into());
+	for x in (0..33).step_by(1) {
+		for y in (0..41).step_by(1) {
+			let size = height_map[x][y] as f32 / 10.0 + 0.05;
+			let mesh = meshes.add(Mesh::from(shape::Cube { size }));
+
+			let x = x as f32 * 2.0 - 32.0;
+			let y = y as f32 * 2.0 - 40.0;
+
+			commands.spawn((
+				PbrBundle {
+					mesh,
+					material: material.clone(),
+					transform: Transform::from_xyz(x, 1.0, y),
+					..default()
+				},
+				VisualMarker,
+			));
+		}
+	}
+}
+
+// -------------------------------- UI -----------------------------------
+
+// pub fn setup_ui(mut commands: Commands) {
+// 	commands.spawn(ButtonBundle {
+// 		node: NodeBundle {
+// 			node: todo!(),
+// 			style: todo!(),
+// 			background_color: todo!(),
+// 			border_color: todo!(),
+// 			focus_policy: todo!(),
+// 			transform: todo!(),
+// 			global_transform: todo!(),
+// 			visibility: todo!(),
+// 			computed_visibility: todo!(),
+// 			z_index: todo!(),
+// 		},
+// 		..default()
+// 	});
+// 	commands.spawn(TextBundle {
+// 		text: Text::from_section("Hello world", default()),
+// 		..default()
+// 	});
+// }

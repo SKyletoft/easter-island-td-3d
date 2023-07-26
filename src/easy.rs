@@ -5,30 +5,51 @@ use once_cell::sync::Lazy;
 
 use crate::gameplay::{self, EnemyType, Path};
 
-type Colour = Color;
+// Moved to a separate file because it absolutely destroys treesitter performance somehow
+pub const HEIGHT_MAP: [[u8; 41]; 33] = include!("easy_height_map.rs");
 
 pub fn setup(
+	mut window: Query<&mut Window>,
 	mut commands: Commands,
 	asset_server: Res<AssetServer>,
 	mut meshes: ResMut<Assets<Mesh>>,
 	mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 	gameplay::spawn_axes(&mut commands, &mut meshes, &mut materials);
-	gameplay::spawn_cursors(&mut commands, &mut meshes, &mut materials);
+	gameplay::spawn_cursors(&mut commands, &mut meshes, &mut materials, &asset_server);
 
-	commands.spawn(gameplay::stone_tower(
-		&asset_server,
-		&mut materials,
-		Vec3::new(0.0, 1.0, 0.0),
-	));
+	window.get_single_mut().unwrap().cursor.visible = false;
 
 	// Level
-	commands.spawn((PbrBundle {
-		mesh: asset_server.load("exported/easy.gltf#Mesh0/Primitive0"),
-		material: materials.add(Colour::rgb(0.0, 0.8, 0.0).into()),
-		transform: Transform::from_xyz(0.0, 0.0, 0.0),
+	let ground = asset_server.load("exported/EasySimple.gltf#Mesh0/Primitive0");
+	let depth = asset_server.load("blender/EasyGroundDepth.png");
+	let albedo = asset_server.load("blender/EasyGroundAlbedo.png");
+	let overlay = asset_server.load("blender/EasyGroundOverlay.png");
+	commands.spawn(PbrBundle {
+		mesh: ground.clone(),
+		material: materials.add(StandardMaterial {
+			base_color_texture: Some(overlay),
+			normal_map_texture: None,
+			alpha_mode: AlphaMode::Mask(0.5),
+			depth_map: Some(depth),
+			parallax_mapping_method: ParallaxMappingMethod::Relief { max_steps: 3 },
+			parallax_depth_scale: -0.01,
+			perceptual_roughness: 1.0,
+			..default()
+		}),
+		transform: Transform::from_xyz(0.0, 0.01, 0.0),
 		..default()
-	},));
+	});
+	commands.spawn(PbrBundle {
+		mesh: ground,
+		material: materials.add(StandardMaterial {
+			base_color_texture: Some(albedo),
+			..default()
+		}),
+		..default()
+	});
+
+	gameplay::visualise_height_map(&HEIGHT_MAP, &mut commands, &mut meshes, &mut materials);
 
 	// Light
 	commands.spawn(DirectionalLightBundle {
