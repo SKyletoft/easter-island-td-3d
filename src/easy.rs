@@ -27,10 +27,11 @@ pub fn setup(
 	window.get_single_mut().unwrap().cursor.visible = false;
 
 	// Level
-	let ground = asset_server.load("exported/EasySimple.gltf#Mesh0/Primitive0");
-	let depth = asset_server.load("blender/EasyGroundDepth.png");
-	let albedo = asset_server.load("blender/EasyGroundAlbedo.png");
-	let overlay = asset_server.load("blender/EasyGroundOverlay.png");
+	let ground: Handle<Mesh> = asset_server.load("exported/EasySimple.gltf#Mesh0/Primitive0");
+	let depth: Handle<Image> = asset_server.load("blender/EasyGroundDepth.png");
+	let albedo: Handle<Image> = asset_server.load("blender/EasyGroundAlbedo.png");
+	let overlay: Handle<Image> = asset_server.load("blender/EasyGroundOverlay.png");
+
 	commands.spawn(PbrBundle {
 		mesh: ground.clone(),
 		material: materials.add(StandardMaterial {
