@@ -433,7 +433,7 @@ pub struct SquareHighlight;
 
 pub fn move_cursor_and_camera(
 	button: Res<Input<MouseButton>>,
-	win_query: Query<&Window>,
+	mut win_query: Query<&mut Window>,
 	mut cam_query: Query<
 		(&Camera, &GlobalTransform, &mut Transform),
 		(With<Camera3d>, Without<Cursor>, Without<VisualMarker>),
@@ -463,7 +463,7 @@ pub fn move_cursor_and_camera(
 	static CURSOR_REFERENCE: Mutex<Vec3> = Mutex::new(Vec3::ZERO);
 
 	let mut inner = move || {
-		let win = win_query.get_single().ok()?;
+		let mut win = win_query.get_single_mut().ok()?;
 		let (cam, g_trans, mut trans) = cam_query.get_single_mut().ok()?;
 		let mut cur = cur_query.get_single_mut().ok()?;
 		let mut hl = hl_query.get_single_mut().ok()?;
@@ -494,6 +494,8 @@ pub fn move_cursor_and_camera(
 				.max(CAMERA_LIMITS_MIN)
 				.min(CAMERA_LIMITS_MAX);
 		}
+
+		win.cursor.visible = mouse.y < 64.0 && mouse.x < 64.0 * 8.0;
 
 		Some(())
 	};

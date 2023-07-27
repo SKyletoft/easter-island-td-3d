@@ -24,8 +24,6 @@ pub fn setup(
 	gameplay::spawn_axes(&mut commands, &mut meshes, &mut materials);
 	gameplay::spawn_cursors(&mut commands, &mut meshes, &mut materials, &asset_server);
 
-	window.get_single_mut().unwrap().cursor.visible = false;
-
 	// Level
 	let ground: Handle<Mesh> = asset_server.load("exported/EasySimple.gltf#Mesh0/Primitive0");
 	let depth: Handle<Image> = asset_server.load("blender/EasyGroundDepth.png");
