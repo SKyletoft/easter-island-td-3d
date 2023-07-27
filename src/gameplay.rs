@@ -7,8 +7,9 @@ type Colour = bevy::prelude::Color;
 
 use crate::easy::{self, Wave};
 
+const ROUNDING_OFFSET: f32 = 1.0;
 fn round_to_grid(v: Vec3) -> Vec3 {
-	let f = |x: f32| (x / 2.0).round() * 2.0;
+	let f = |x: f32| ((x + ROUNDING_OFFSET) / 2.0).round() * 2.0 - ROUNDING_OFFSET;
 	Vec3::new(f(v.x), v.y, f(v.z))
 }
 
@@ -473,9 +474,10 @@ pub fn move_cursor_and_camera(
 		let dist = ray.intersect_plane(Vec3::new(0.0, 1.0, 0.0), Vec3::Y)?;
 		let Vec3 { x, y: _, z } = ray.get_point(dist);
 
-		let d_x = (((x + 32.0) / 2.0).round() as usize).min(32).max(0);
-		let d_z = (((z + 40.0) / 2.0).round() as usize).min(40).max(0);
-		let d_y = 1.0 - easy::HEIGHT_MAP[d_x][d_z] as f32 / 10.0;
+		let d_x = (((x + 15.0) / 2.0).round() as usize).min(15).max(0);
+		let d_z = (((z + 19.0) / 2.0).round() as usize).min(19).max(0);
+		let height_data = easy::HEIGHT_MAP[d_x][d_z];
+		let d_y = 1.0 - height_data as f32 / 10.0;
 		let v = Vec3::new(x, d_y, z);
 
 		cur.translation = v;

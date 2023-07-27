@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 use crate::gameplay::{self, EnemyType, Path};
 
 // Moved to a separate file because it absolutely destroys treesitter performance somehow
-pub const HEIGHT_MAP: [[u8; 41]; 33] = include!("easy_height_map.rs");
+pub const HEIGHT_MAP: [[u8; 20]; 16] = include!("easy_height_map.rs");
 
 pub fn setup(
 	mut window: Query<&mut Window>,
@@ -15,6 +15,12 @@ pub fn setup(
 	mut meshes: ResMut<Assets<Mesh>>,
 	mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+		let half_scale = Transform::from_xyz(0.0, 0.01, 0.0).with_scale(Vec3 {
+			x: 0.5,
+			y: 1.0,
+			z: 0.5,
+		});
+
 	gameplay::spawn_axes(&mut commands, &mut meshes, &mut materials);
 	gameplay::spawn_cursors(&mut commands, &mut meshes, &mut materials, &asset_server);
 
@@ -35,9 +41,10 @@ pub fn setup(
 			parallax_mapping_method: ParallaxMappingMethod::Relief { max_steps: 3 },
 			parallax_depth_scale: -0.01,
 			perceptual_roughness: 1.0,
+			max_parallax_layer_count: 128.0,
 			..default()
 		}),
-		transform: Transform::from_xyz(0.0, 0.01, 0.0),
+		transform: half_scale,
 		..default()
 	});
 	commands.spawn(PbrBundle {
@@ -46,6 +53,7 @@ pub fn setup(
 			base_color_texture: Some(albedo),
 			..default()
 		}),
+		transform: half_scale,
 		..default()
 	});
 
