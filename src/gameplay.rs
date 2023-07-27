@@ -652,24 +652,50 @@ pub fn visualise_height_map(
 
 // -------------------------------- UI -----------------------------------
 
-// pub fn setup_ui(mut commands: Commands) {
-// 	commands.spawn(ButtonBundle {
-// 		node: NodeBundle {
-// 			node: todo!(),
-// 			style: todo!(),
-// 			background_color: todo!(),
-// 			border_color: todo!(),
-// 			focus_policy: todo!(),
-// 			transform: todo!(),
-// 			global_transform: todo!(),
-// 			visibility: todo!(),
-// 			computed_visibility: todo!(),
-// 			z_index: todo!(),
-// 		},
-// 		..default()
-// 	});
-// 	commands.spawn(TextBundle {
-// 		text: Text::from_section("Hello world", default()),
-// 		..default()
-// 	});
-// }
+pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
+	let one: Handle<Image> = asset_server.load("exported/gui/one.png");
+	let two: Handle<Image> = asset_server.load("exported/gui/two.png");
+	let three: Handle<Image> = asset_server.load("exported/gui/three.png");
+	let four: Handle<Image> = asset_server.load("exported/gui/four.png");
+	let five: Handle<Image> = asset_server.load("exported/gui/five.png");
+	let six: Handle<Image> = asset_server.load("exported/gui/six.png");
+	let seven: Handle<Image> = asset_server.load("exported/gui/seven.png");
+	let volcano: Handle<Image> = asset_server.load("exported/gui/volcano.png");
+
+	commands
+		.spawn(NodeBundle {
+			style: Style {
+				flex_direction: FlexDirection::Row,
+				flex_basis: Val::Percent(100.),
+				align_items: AlignItems::Start,
+				justify_content: JustifyContent::FlexStart,
+				..Default::default()
+			},
+			..Default::default()
+		})
+		.with_children(|parent| {
+			let mut spawn_image = |texture| {
+				let width = Val::Px(64.0);
+				parent.spawn(ButtonBundle {
+					image: UiImage {
+						texture,
+						..default()
+					},
+					style: Style {
+						width,
+						height: width,
+						..Default::default()
+					},
+					..default()
+				});
+			};
+			spawn_image(one);
+			spawn_image(two);
+			spawn_image(three);
+			spawn_image(four);
+			spawn_image(five);
+			spawn_image(six);
+			spawn_image(seven);
+			spawn_image(volcano);
+		});
+}

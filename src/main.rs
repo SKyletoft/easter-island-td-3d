@@ -31,7 +31,7 @@ fn main() {
 			Startup,
 			(
 				easy::setup,
-				// gameplay::setup_ui,
+				gameplay::setup_ui,
 				// gameplay::load_scene,
 				// gameplay::setup,
 			),
