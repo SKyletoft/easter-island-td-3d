@@ -486,9 +486,21 @@ pub fn move_cursor_and_camera(
 		let height_data = easy::HEIGHT_MAP[d_x][d_z];
 		let d_y = 1.0 - height_data as f32 / 10.0;
 		let v = Vec3::new(x, d_y, z);
+		dbg!(v);
+
+		let hl_coord =
+			if (-20.0..20.0).contains(&z) && (-16.0..16.0).contains(&x) && height_data != 9 {
+				round_to_grid(v)
+			} else {
+				Vec3 {
+					x: 0.0,
+					y: -5.0,
+					z: 0.0,
+				}
+			};
 
 		cur.translation = v;
-		hl.translation = round_to_grid(v);
+		hl.translation = hl_coord;
 
 		// Move camera
 		let mut v_cur = CURSOR_REFERENCE.lock().unwrap();
