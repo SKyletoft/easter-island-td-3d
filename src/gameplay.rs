@@ -14,7 +14,10 @@ fn round_to_grid(v: Vec3) -> Vec3 {
 }
 
 #[derive(Event)]
-pub struct Click;
+pub enum Click {
+	Gui,
+	World,
+}
 
 pub fn generate_clicks(
 	button: Res<Input<MouseButton>>,
@@ -34,7 +37,11 @@ pub fn generate_clicks(
 		*cur_ref = p;
 	}
 	if button.just_released(MouseButton::Left) && p != Vec2::ZERO && *cur_ref == p {
-		ev.send(Click);
+		if p.y <= 64.0 {
+			ev.send(Click::Gui);
+		} else {
+			ev.send(Click::World);
+		}
 	}
 }
 
