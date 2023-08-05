@@ -3,7 +3,7 @@ use std::iter;
 use bevy::prelude::*;
 use once_cell::sync::Lazy;
 
-use crate::gameplay::{self, EnemyType, Path};
+use crate::gameplay::{enemies::EnemyType, path::Path, utils};
 
 // Moved to a separate file because it absolutely destroys treesitter performance somehow
 pub const HEIGHT_MAP: [[i8; 20]; 16] = include!("easy_height_map.rs");
@@ -14,8 +14,8 @@ pub fn setup(
 	mut meshes: ResMut<Assets<Mesh>>,
 	mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-	gameplay::spawn_axes(&mut commands, &mut meshes, &mut materials);
-	gameplay::spawn_cursors(&mut commands, &mut meshes, &mut materials, &asset_server);
+	utils::spawn_axes(&mut commands, &mut meshes, &mut materials);
+	utils::spawn_cursors(&mut commands, &mut meshes, &mut materials, &asset_server);
 
 	let half_scale = Vec3 {
 		x: 0.5,
