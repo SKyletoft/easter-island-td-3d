@@ -1,4 +1,4 @@
-#![allow(clippy::type_complexity)]
+#![allow(clippy::type_complexity, dead_code)]
 
 use bevy::{pbr::DirectionalLightShadowMap, prelude::*};
 use gameplay::{Click, Difficulty, Tower};
@@ -11,20 +11,21 @@ mod normal;
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
-		// .add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin)
+		.add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin)
 		.insert_resource(DirectionalLightShadowMap { size: 8192 })
 		.insert_resource(gameplay::SpawnTimer(Timer::from_seconds(
 			2.0,
 			TimerMode::Repeating,
 		)))
-		.insert_resource(gameplay::Level {
+		.insert_resource(gameplay::GameState {
 			number: 0,
 			active: true,
 			difficulty: Difficulty::Easy,
 			wave: easy::WAVES[0].clone(),
 		})
-		.insert_resource(gameplay::Selection {
-			tower: Some(Tower::Land),
+		.insert_resource(gameplay::Banking {
+			selection: Some(Tower::Land),
+			balance: 1000000,
 		})
 		.add_event::<Click>()
 		.add_systems(
@@ -32,21 +33,24 @@ fn main() {
 			(
 				easy::setup,
 				gameplay::setup_ui,
-				// gameplay::load_scene,
-				// gameplay::setup,
+				gameplay::init_bullet_model,
+				gameplay::init_textures,
+				gameplay::init_enemies,
 			),
 		)
 		.add_systems(
 			Update,
 			(
-				gameplay::generate_clicks,
 				gameplay::move_enemies,
-				gameplay::animate_enemies,
 				gameplay::move_cursor_and_camera,
-				gameplay::land_attack,
-				// gameplay::air_attack,
+				gameplay::move_bullets,
+				gameplay::animate_enemies,
 				gameplay::spawn_enemy,
 				gameplay::spawn_tower,
+				gameplay::run_shop,
+				gameplay::generate_clicks,
+				gameplay::land_attack,
+				gameplay::air_attack,
 			),
 		)
 		.run();

@@ -6,57 +6,58 @@ use once_cell::sync::Lazy;
 use crate::gameplay::{self, EnemyType, Path};
 
 // Moved to a separate file because it absolutely destroys treesitter performance somehow
-pub const HEIGHT_MAP: [[u8; 20]; 16] = include!("easy_height_map.rs");
+pub const HEIGHT_MAP: [[i8; 20]; 16] = include!("easy_height_map.rs");
 
 pub fn setup(
-	mut window: Query<&mut Window>,
 	mut commands: Commands,
 	asset_server: Res<AssetServer>,
 	mut meshes: ResMut<Assets<Mesh>>,
 	mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-		let half_scale = Transform::from_xyz(0.0, 0.01, 0.0).with_scale(Vec3 {
-			x: 0.5,
-			y: 1.0,
-			z: 0.5,
-		});
-
 	gameplay::spawn_axes(&mut commands, &mut meshes, &mut materials);
 	gameplay::spawn_cursors(&mut commands, &mut meshes, &mut materials, &asset_server);
 
+	let half_scale = Vec3 {
+		x: 0.5,
+		y: 1.0,
+		z: 0.5,
+	};
+
 	// Level
-	let ground: Handle<Mesh> = asset_server.load("exported/EasySimple.gltf#Mesh0/Primitive0");
+	let ground: Handle<Mesh> = asset_server.load("exported/SimpleGround.gltf#Mesh0/Primitive0");
 	let depth: Handle<Image> = asset_server.load("blender/EasyGroundDepth.png");
 	let albedo: Handle<Image> = asset_server.load("blender/EasyGroundAlbedo.png");
 	let overlay: Handle<Image> = asset_server.load("blender/EasyGroundOverlay.png");
+	let normal: Handle<Image> = asset_server.load("blender/EasyGroundNormal.png");
 
 	commands.spawn(PbrBundle {
 		mesh: ground.clone(),
 		material: materials.add(StandardMaterial {
 			base_color_texture: Some(overlay),
-			normal_map_texture: None,
+			normal_map_texture: Some(normal.clone()),
 			alpha_mode: AlphaMode::Mask(0.5),
 			depth_map: Some(depth),
 			parallax_mapping_method: ParallaxMappingMethod::Relief { max_steps: 3 },
-			parallax_depth_scale: -0.01,
-			perceptual_roughness: 1.0,
-			max_parallax_layer_count: 128.0,
+			parallax_depth_scale: 0.1,
+			perceptual_roughness: 0.2,
+			max_parallax_layer_count: 16.0,
 			..default()
 		}),
-		transform: half_scale,
+		transform: Transform::from_xyz(0.0, 0.01, 0.0).with_scale(half_scale),
 		..default()
 	});
 	commands.spawn(PbrBundle {
 		mesh: ground,
 		material: materials.add(StandardMaterial {
 			base_color_texture: Some(albedo),
+			normal_map_texture: Some(normal),
 			..default()
 		}),
-		transform: half_scale,
+		transform: Transform::from_xyz(0.0, 0.0, 0.0).with_scale(half_scale),
 		..default()
 	});
 
-	gameplay::visualise_height_map(&HEIGHT_MAP, &mut commands, &mut meshes, &mut materials);
+	// gameplay::visualise_height_map(&HEIGHT_MAP, &mut commands, &mut meshes, &mut materials);
 
 	// Light
 	commands.spawn(DirectionalLightBundle {
@@ -72,7 +73,8 @@ pub fn setup(
 	// Camera
 	commands.spawn(Camera3dBundle {
 		// transform: Transform::from_xyz(-15.0, 12.5, 1.0)
-		transform: Transform::from_xyz(-30.0, 25.0, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
+		// transform: Transform::from_xyz(-30.0, 25.0, 2.0)
+		transform: Transform::from_xyz(-12.0, 10.0, 0.8).looking_at(Vec3::ZERO, Vec3::Y),
 		..default()
 	});
 }
@@ -80,46 +82,46 @@ pub fn setup(
 pub static PATHS: [Lazy<Path>; 3] = [
 	Lazy::new(|| {
 		Path::from_keyframes([
-			(-6, 0, -45),
-			(-6, 0, -26),
-			(2, 0, -26),
-			(2, 0, -14),
-			(10, 0, -14),
-			(10, 0, -6),
-			(14, 0, -6),
-			(14, 0, 30),
-			(6, 0, 30),
-			(6, 0, 45),
+			(-3, 0, -22),
+			(-3, 0, -13),
+			(1, 0, -13),
+			(1, 0, -7),
+			(5, 0, -7),
+			(5, 0, -3),
+			(7, 0, -3),
+			(7, 0, 15),
+			(3, 0, 15),
+			(3, 0, 22),
 		])
 	}),
 	Lazy::new(|| {
 		Path::from_keyframes([
-			(-6, 0, -45),
-			(-6, 0, -26),
-			(2, 0, -26),
-			(2, 0, -14),
-			(-2, 0, -14),
-			(-2, 0, 2),
-			(2, 0, 2),
-			(2, 0, 18),
-			(-2, 0, 18),
-			(-2, 0, 30),
-			(6, 0, 30),
-			(6, 0, 45),
+			(-3, 0, -22),
+			(-3, 0, -13),
+			(1, 0, -13),
+			(1, 0, -7),
+			(-1, 0, -7),
+			(-1, 0, 1),
+			(1, 0, 1),
+			(1, 0, 9),
+			(-1, 0, 9),
+			(-1, 0, 15),
+			(3, 0, 15),
+			(3, 0, 22),
 		])
 	}),
 	Lazy::new(|| {
 		Path::from_keyframes([
-			(-6, 0, -45),
-			(-6, 0, -26),
-			(-14, 0, -26),
-			(-14, 0, 10),
-			(-10, 0, 10),
-			(-10, 0, 18),
-			(-2, 0, 18),
-			(-2, 0, 30),
-			(6, 0, 30),
-			(6, 0, 45),
+			(-3, 0, -22),
+			(-3, 0, -13),
+			(-7, 0, -13),
+			(-7, 0, 5),
+			(-5, 0, 5),
+			(-5, 0, 9),
+			(-1, 0, 9),
+			(-1, 0, 15),
+			(3, 0, 15),
+			(3, 0, 22),
 		])
 	}),
 ];
